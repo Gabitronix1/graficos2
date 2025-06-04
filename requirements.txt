@@ -1,4 +1,0 @@
-streamlit
-plotly
-fastapi
-uvicorn
