@@ -47,21 +47,33 @@ value_cols = [col for col in df.columns if col != "label"]
 # Convertir todo a enteros
 df[value_cols] = df[value_cols].astype(int)
 
-# 🔐 Evitar conflicto si ya existe la columna 'value'
+
+# Para gráficos múltiples → derretimos la tabla
+# Detectar columnas numéricas (distintas de 'label')
+value_cols = [col for col in df.columns if col != "label"]
+df[value_cols] = df[value_cols].astype(int)
+
+# 🔐 Evitar conflicto con columna 'value'
 while "value" in df.columns:
     df = df.rename(columns={"value": "value_" + uuid.uuid4().hex[:4]})
 
-# Para gráficos múltiples → derretimos la tabla
-df_melted = df.melt(id_vars="label", var_name="serie", value_name="value")
+# ⚠️ Solo hacer melt si hay más de una columna de valores
+if len(value_cols) > 1:
+    df_melted = df.melt(id_vars="label", var_name="serie", value_name="value")
+    color_col = "serie"
+else:
+    df_melted = df.rename(columns={value_cols[0]: "value"})
+    color_col = "label"
 
+# 🔥 Crear gráfico según tipo
 if chart_type == "pie":
     fig = px.pie(df, names="label", values=value_cols[0], title=title, hole=0.4)
 elif chart_type == "line":
-    fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=title)
+    fig = px.line(df_melted, x="label", y="value", color=color_col, markers=True, text="value", title=title)
 elif chart_type == "scatter":
-    fig = px.scatter(df_melted, x="label", y="value", color="serie", text="value", title=title)
+    fig = px.scatter(df_melted, x="label", y="value", color=color_col, text="value", title=title)
 else:
-    fig = px.bar(df_melted, x="label", y="value", color="serie", text="value", title=title)
+    fig = px.bar(df_melted, x="label", y="value", color=color_col, text="value", title=title)
 
 fig.update_traces(
     texttemplate='%{text} m³',
