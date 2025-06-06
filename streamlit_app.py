@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from supabase_client import get_client
+import uuid
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
@@ -39,6 +40,16 @@ custom_colors = ["#EBB34F", "#696158", "#BFB800", "#DFD1A7", "#A67B5B", "#F2C57C
 # Convertir valores a enteros
 value_cols = [col for col in df.columns if col != "label"]
 df[value_cols] = df[value_cols].astype(int)
+
+# Detectar columnas que no sean 'label'
+value_cols = [col for col in df.columns if col != "label"]
+
+# Convertir todo a enteros
+df[value_cols] = df[value_cols].astype(int)
+
+# 🔐 Evitar conflicto si ya existe la columna 'value'
+while "value" in df.columns:
+    df = df.rename(columns={"value": "value_" + uuid.uuid4().hex[:4]})
 
 # Para gráficos múltiples → derretimos la tabla
 df_melted = df.melt(id_vars="label", var_name="serie", value_name="value")
