@@ -5,33 +5,9 @@ from supabase_client import get_client
 import uuid
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
-# 🔥 DASHBOARD PREDICTIVO
-st.title("📊 Panel de Control - Agente Tronix")
 
-supabase = get_client()
-data = supabase.table("vista_comparativa_despachos").select("*").execute().data
-df_dashboard = pd.DataFrame(data)
 
-if not df_dashboard.empty:
-    volumen_planificado = df_dashboard["volumen_planificado"].sum()
-    volumen_despachado = df_dashboard["volumen_despachado"].sum()
-    diferencia = volumen_despachado - volumen_planificado
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("✅ Planificado (m³)", f"{volumen_planificado:,.0f}")
-    col2.metric("🚛 Despachado (m³)", f"{volumen_despachado:,.0f}")
-    col3.metric("📉 Diferencia", f"{diferencia:,.0f}")
-
-    df_zona = df_dashboard.groupby("codigo_destino")[["volumen_planificado", "volumen_despachado"]].sum().reset_index()
-    fig = px.bar(df_zona, x="codigo_destino", y=["volumen_planificado", "volumen_despachado"],
-                 barmode="group", title="Volumen por Zona")
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.divider()
-else:
-    st.info("No hay datos para mostrar el panel predictivo.")
-
-# ⬇️ Lo que ya tenías antes (gráfico por grafico_id)
 
 # 1️⃣ Leer query param
 grafico_id = st.query_params.get("grafico_id")
