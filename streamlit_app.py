@@ -8,7 +8,7 @@ from supabase_client import get_client
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
 # ── Leer parámetros de la URL ────────────────────────────────────────────
-params      = st.experimental_get_query_params()
+params      = st.query_params.get()
 view        = params.get("view", [""])[0]
 grafico_id  = params.get("grafico_id", [""])[0]
 
