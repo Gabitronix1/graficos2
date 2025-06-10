@@ -50,11 +50,18 @@ def render_dynamic_chart(df, meta):
     else:
         fig = px.bar(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
 
-    fig.update_traces(
-        texttemplate='%{text} m³',
-        textposition='outside',
-        marker=dict(line=dict(width=0.5, color='black'))
-    )
+    # Solo usar 'outside' si no es scatter
+    if chart_type not in ["scatter", "line"]:
+        fig.update_traces(
+            texttemplate='%{text} m³',
+            textposition='outside',
+            marker=dict(line=dict(width=0.5, color='black'))
+        )
+    else:
+        fig.update_traces(
+            texttemplate='%{text} m³',
+            marker=dict(line=dict(width=0.5, color='black'))
+        )
 
     fig.update_layout(
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080"],
