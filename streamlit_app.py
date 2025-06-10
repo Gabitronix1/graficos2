@@ -78,7 +78,6 @@ def render_dynamic_chart(df, meta):
 
     fig.update_traces(
         texttemplate='%{text} m³',
-        textposition='outside',
         marker=dict(line=dict(width=0.5, color='black'))
     )
 
