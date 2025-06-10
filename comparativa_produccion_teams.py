@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 from supabase_client import get_client
 
-st.set_page_config(layout="wide", page_title="Comparativa Producción vs Proyección")
 
 supabase = get_client()
 
