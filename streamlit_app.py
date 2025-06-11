@@ -4,6 +4,16 @@ import pandas as pd
 from supabase_client import get_client
 import uuid
 
+from streamlit.web.server.websocket_headers import _get_websocket_headers
+
+def allow_iframe():
+    headers = _get_websocket_headers()
+    headers["X-Frame-Options"] = "ALLOWALL"
+    headers["Content-Security-Policy"] = "frame-ancestors *"
+
+allow_iframe()
+
+
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
 # 1️⃣ Leer query param
