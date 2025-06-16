@@ -30,6 +30,7 @@ resp = (
     supabase.table("graficos")
     .select("*")
     .eq("id", grafico_id)
+    .maybe_single()
     .execute()
 )
 
