@@ -76,6 +76,14 @@ def render_dynamic_chart(df, meta):
     elif chart_type == "line" and df.shape[1] > 2:
         df_melted = df.melt(id_vars=["label"], var_name="serie", value_name="value")
         fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=meta["titulo"])
+    elif chart_type == "multi-line":
+    for serie in values:
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=[p["value"] for p in serie["data"]],
+            name=serie["name"],
+            mode='lines+markers'
+        ))
     elif chart_type == "line":
         fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"], color="label")
     elif chart_type == "area":
