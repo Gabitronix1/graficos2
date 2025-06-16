@@ -83,7 +83,7 @@ def render_dynamic_chart(df, meta):
         fig = go.Figure(data=[
             go.Scatter(
                 x=labels,
-                y=[p["value"] for p in serie["data"]],
+                y=[p["value"] if isinstance(p, dict) else p for p in serie["data"]],
                 name=serie["name"],
                 mode='lines+markers'
             ) for serie in values
