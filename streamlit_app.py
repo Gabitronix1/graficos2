@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 from supabase_client import get_client
 import uuid
@@ -30,7 +31,7 @@ resp = (
     .execute()
 )
 
-if not resp.data:
+if not resp or not getattr(resp, "data", None):
     st.error("No se encontró el gráfico solicitado")
     st.stop()
 
@@ -77,13 +78,16 @@ def render_dynamic_chart(df, meta):
         df_melted = df.melt(id_vars=["label"], var_name="serie", value_name="value")
         fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=meta["titulo"])
     elif chart_type == "multi-line":
-    for serie in values:
-        fig.add_trace(go.Scatter(
-            x=labels,
-            y=[p["value"] for p in serie["data"]],
-            name=serie["name"],
-            mode='lines+markers'
-        ))
+        labels = meta.get("labels", [])
+        values = meta.get("series", [])
+        fig = go.Figure(data=[
+            go.Scatter(
+                x=labels,
+                y=[p["value"] for p in serie["data"]],
+                name=serie["name"],
+                mode='lines+markers'
+            ) for serie in values
+        ])
     elif chart_type == "line":
         fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"], color="label")
     elif chart_type == "area":
@@ -95,10 +99,11 @@ def render_dynamic_chart(df, meta):
     else:
         fig = px.bar(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
 
-    fig.update_traces(
-        texttemplate='%{text} m³',
-        marker=dict(line=dict(width=0.5, color='black'))
-    )
+    if chart_type not in ["multi-line"]:
+        fig.update_traces(
+            texttemplate='%{text} m³',
+            marker=dict(line=dict(width=0.5, color='black'))
+        )
 
     fig.update_layout(
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080"],
