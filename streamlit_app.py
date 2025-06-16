@@ -89,7 +89,7 @@ def render_dynamic_chart(df, meta):
             ) for serie in values
         ])
     elif chart_type == "line":
-        fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"], color="label")
+        fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"])
     elif chart_type == "area":
         fig = px.area(df, x="label", y="value", title=meta["titulo"], markers=True, color="label", text="value")
     elif chart_type == "scatter":
