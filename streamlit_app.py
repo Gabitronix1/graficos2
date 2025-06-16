@@ -30,7 +30,6 @@ resp = (
     supabase.table("graficos")
     .select("*")
     .eq("id", grafico_id)
-    .single()
     .execute()
 )
 
