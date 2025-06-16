@@ -4,15 +4,14 @@ import plotly.graph_objects as go
 import pandas as pd
 from supabase_client import get_client
 import uuid
-from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
 # 🛡️ Permitir iframes embebidos
 def allow_iframe():
-    headers = _get_websocket_headers()
-    headers["X-Frame-Options"] = "ALLOWALL"
-    headers["Content-Security-Policy"] = "frame-ancestors *"
+    if hasattr(st, "context") and hasattr(st.context, "headers"):
+        st.context.headers["X-Frame-Options"] = "ALLOWALL"
+        st.context.headers["Content-Security-Policy"] = "frame-ancestors *"
 allow_iframe()
 
 # 1️⃣ Leer query param
