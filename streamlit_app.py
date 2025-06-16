@@ -3,20 +3,16 @@ import plotly.express as px
 import pandas as pd
 from supabase_client import get_client
 import uuid
+from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
-from streamlit.web.server.websocket_headers import _get_websocket_headers
-
+# 🛡️ Permitir iframes embebidos
 def allow_iframe():
     headers = _get_websocket_headers()
     headers["X-Frame-Options"] = "ALLOWALL"
     headers["Content-Security-Policy"] = "frame-ancestors *"
-
 allow_iframe()
-
-
-
 
 # 1️⃣ Leer query param
 grafico_id = st.query_params.get("grafico_id")
@@ -38,8 +34,14 @@ if not resp.data:
     st.error("No se encontró el gráfico solicitado")
     st.stop()
 
-meta = resp.data           # título, tipo, etc.
-serie_original = resp.data["serie"]
+meta = resp.data
+serie_original = meta.get("serie", [])
+
+# 🔍 Detectar si viene con labels[] y values[] separados (malo)
+if isinstance(serie_original, dict) and "labels" in serie_original and "values" in serie_original:
+    labels = serie_original["labels"]
+    values = serie_original["values"]
+    serie_original = [{"label": l, "value": v} for l, v in zip(labels, values)]
 
 # 🔐 Blindaje: limpiar la serie para que value sea siempre numérico
 def sanitizar_serie(serie):
@@ -55,19 +57,16 @@ def sanitizar_serie(serie):
                 return 0
         else:
             return 0
-
     for item in serie:
         item["value"] = limpiar_valor(item.get("value"))
-
     return serie
 
 serie = sanitizar_serie(serie_original)
 df = pd.DataFrame(serie)
 
-# ✅ Función para renderizar múltiples tipos de gráfico
+# ✅ Renderizar múltiples tipos de gráfico
 def render_dynamic_chart(df, meta):
     chart_type = meta.get("tipo", "bar")
-
     if "label" not in df.columns or "value" not in df.columns:
         st.error("Los datos no tienen las columnas requeridas: 'label' y 'value'")
         st.stop()
@@ -85,7 +84,7 @@ def render_dynamic_chart(df, meta):
         fig = px.scatter(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
     elif chart_type == "horizontal_bar":
         fig = px.bar(df, y="label", x="value", title=meta["titulo"], text="value", orientation='h', color="label")
-    else:  # default bar
+    else:
         fig = px.bar(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
 
     fig.update_traces(
@@ -95,28 +94,15 @@ def render_dynamic_chart(df, meta):
 
     fig.update_layout(
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080"],
-        yaxis_title="",
-        xaxis_title="",
-        title_font_size=24,
-        uniformtext_minsize=8,
-        uniformtext_mode='hide',
-        plot_bgcolor='white',
+        yaxis_title="", xaxis_title="", title_font_size=24,
+        uniformtext_minsize=8, uniformtext_mode='hide',
+        plot_bgcolor='white', template="plotly_white",
         margin=dict(t=60, l=20, r=20, b=40),
-        template="plotly_white"
     )
-
     return fig
 
-# Mostrar total
-total = df["value"].sum()
-st.markdown(f"**🔢 Total producido:** {int(total)} m³")
-
-# Mostrar descripción
-st.markdown("Este gráfico muestra la producción total por zona agrupada por categoría.")
-
-# Mostrar gráfico
+# Mostrar gráfico (sin texto adicional fijo)
 st.plotly_chart(render_dynamic_chart(df, meta), use_container_width=True)
-
 
 
 
