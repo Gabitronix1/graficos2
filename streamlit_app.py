@@ -71,41 +71,45 @@ df = pd.DataFrame(serie) if serie else pd.DataFrame()
 # ✅ Renderizar múltiples tipos de gráfico
 def render_dynamic_chart(df, meta):
     chart_type = meta.get("tipo", "bar")
-    if chart_type not in ["multi-line"] and ("label" not in df.columns or "value" not in df.columns):
-        st.error("Los datos no tienen las columnas requeridas: 'label' y 'value'")
-        st.stop()
 
-    if chart_type == "pie":
-        fig = px.pie(df, names="label", values="value", title=meta["titulo"])
-    elif chart_type == "line" and df.shape[1] > 2:
-        df_melted = df.melt(id_vars=["label"], var_name="serie", value_name="value")
-        fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=meta["titulo"])
-    elif chart_type == "multi-line":
+    if chart_type == "multi-line":
         labels = meta.get("labels", [])
-        values = meta.get("series", [])
-        if not labels or not values:
+        series = meta.get("series", [])
+        if not labels or not series:
             st.error("Faltan datos para el gráfico multi-line")
             st.stop()
-        fig = go.Figure(data=[
-            go.Scatter(
-                x=labels,
-                y=[p["value"] if isinstance(p, dict) else p for p in serie["data"]],
-                name=serie["name"],
-                mode='lines+markers'
-            ) for serie in values
-        ])
-    elif chart_type == "line":
-        fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"])
-    elif chart_type == "area":
-        fig = px.area(df, x="label", y="value", title=meta["titulo"], markers=True, color="label", text="value")
-    elif chart_type == "scatter":
-        fig = px.scatter(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
-    elif chart_type == "horizontal_bar":
-        fig = px.bar(df, y="label", x="value", title=meta["titulo"], text="value", orientation='h', color="label")
+        fig = go.Figure()
+        for serie in series:
+            y_data = []
+            for idx, label in enumerate(labels):
+                try:
+                    punto = serie["data"][idx]
+                    value = punto["value"] if isinstance(punto, dict) and "value" in punto else punto
+                except IndexError:
+                    value = 0
+                y_data.append(value)
+            fig.add_trace(go.Scatter(x=labels, y=y_data, name=serie["name"], mode="lines+markers"))
     else:
-        fig = px.bar(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
+        if ("label" not in df.columns or "value" not in df.columns) and df.shape[1] < 2:
+            st.error("Los datos no tienen las columnas requeridas: 'label' y 'value'")
+            st.stop()
 
-    if chart_type not in ["multi-line"]:
+        if chart_type == "pie":
+            fig = px.pie(df, names="label", values="value", title=meta["titulo"])
+        elif chart_type == "line" and df.shape[1] > 2:
+            df_melted = df.melt(id_vars=["label"], var_name="serie", value_name="value")
+            fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=meta["titulo"])
+        elif chart_type == "line":
+            fig = px.line(df, x="label", y="value", markers=True, text="value", title=meta["titulo"])
+        elif chart_type == "area":
+            fig = px.area(df, x="label", y="value", title=meta["titulo"], markers=True, color="label", text="value")
+        elif chart_type == "scatter":
+            fig = px.scatter(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
+        elif chart_type == "horizontal_bar":
+            fig = px.bar(df, y="label", x="value", title=meta["titulo"], text="value", orientation='h', color="label")
+        else:
+            fig = px.bar(df, x="label", y="value", title=meta["titulo"], text="value", color="label")
+
         fig.update_traces(
             texttemplate='%{text} m³',
             marker=dict(line=dict(width=0.5, color='black'))
@@ -122,6 +126,7 @@ def render_dynamic_chart(df, meta):
 
 # Mostrar gráfico (sin texto adicional fijo)
 st.plotly_chart(render_dynamic_chart(df, meta), use_container_width=True)
+
 
 
 
