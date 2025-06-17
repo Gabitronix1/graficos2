@@ -1,26 +1,33 @@
+import json
 import streamlit as st
-import plotly.express as px
 import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
 from supabase_client import get_client
 from streamlit.web.server.websocket_headers import _get_websocket_headers
-import json
 
-st.set_page_config(layout="wide", page_title="Gráficos Tronix")
+# -----------------------------------------------------------------------------
+#  ⚙️  Configuración inicial
+# -----------------------------------------------------------------------------
 
-def allow_iframe():
+def _allow_iframe():
+    """Permite que la app sea embebida dentro de un <iframe>."""
     headers = _get_websocket_headers()
     headers["X-Frame-Options"] = "ALLOWALL"
     headers["Content-Security-Policy"] = "frame-ancestors *"
-allow_iframe()
 
-# Leer parámetro de URL
+st.set_page_config(layout="wide", page_title="Gráficos Tronix")
+_allow_iframe()
+
+# -----------------------------------------------------------------------------
+#  🔌  Obtener datos del gráfico desde Supabase
+# -----------------------------------------------------------------------------
+
 grafico_id = st.query_params.get("grafico_id")
 if not grafico_id:
-    st.error("Falta el parámetro grafico_id")
+    st.error("Falta el parámetro grafico_id en la URL")
     st.stop()
 
-# Consulta a Supabase
 supabase = get_client()
 resp = (
     supabase.table("graficos")
@@ -34,150 +41,95 @@ if not resp or not getattr(resp, "data", None):
     st.error("No se encontró el gráfico solicitado")
     st.stop()
 
-meta = resp.data
-tipo = meta.get("tipo", "bar")
+meta = resp.data  # Dict con todas las columnas de la tabla
 
-# === FUNCIÓN PARA DESERIALIZAR DATOS JSON ===
-def deserializar_campo(campo):
-    """Convierte string JSON a objeto Python si es necesario"""
-    if isinstance(campo, str):
+# -----------------------------------------------------------------------------
+#  🛠️  Utilidades de deserialización y sanitizado
+# -----------------------------------------------------------------------------
+
+def _jsonify(field, default):
+    """Convierte un string JSON a Python o devuelve el valor tal cual."""
+    if field is None:
+        return default
+    if isinstance(field, (list, dict)):
+        return field
+    if isinstance(field, str):
         try:
-            return json.loads(campo)
-        except (json.JSONDecodeError, TypeError):
-            return campo
-    return campo
+            return json.loads(field)
+        except json.JSONDecodeError:
+            return default
+    return default
 
-# === PROCESAMIENTO MEJORADO DE DATOS ===
-def procesar_datos_supabase(meta):
-    """Procesa y normaliza los datos de Supabase"""
-    
-    # Deserializar campos JSON
-    labels = deserializar_campo(meta.get("labels", []))
-    series_data = deserializar_campo(meta.get("series", []))
-    serie_data = deserializar_campo(meta.get("serie", []))
-    
-    # Debug info
-    st.write("DEBUG - Datos deserializados:")
-    st.write(f"Labels: {labels}")
-    st.write(f"Series: {series_data}")
-    st.write(f"Serie: {serie_data}")
-    st.write(f"Tipo: {tipo}")
-    st.write(f"Multiserie: {meta.get('multiserie', False)}")
-    
-    return labels, series_data, serie_data
 
-# Procesar datos
-labels, series_data, serie_data = procesar_datos_supabase(meta)
+def _clean_value(v):
+    if isinstance(v, (int, float)):
+        return v
+    if isinstance(v, str):
+        try:
+            return float(v)
+        except ValueError:
+            return 0
+    if isinstance(v, dict):
+        return list(v.values())[0] if len(v) == 1 else 0
+    return 0
 
-# Caso legacy para serie simple
-if isinstance(serie_data, dict) and "labels" in serie_data and "values" in serie_data:
-    serie_data = [
-        {"label": l, "value": v}
-        for l, v in zip(serie_data["labels"], serie_data["values"])
-    ]
 
-def sanitizar_serie(serie):
-    """Limpia y normaliza una serie de datos"""
-    if not serie:
-        return []
-    
-    def limpiar_valor(v):
-        if isinstance(v, dict):
-            return list(v.values())[0] if len(v) == 1 else 0
-        if isinstance(v, (int, float)):
-            return v
-        if isinstance(v, str):
-            try: 
-                return float(v)
-            except: 
-                return 0
-        return 0
-    
-    # Asegurar que serie sea una lista
-    if not isinstance(serie, list):
-        return []
-    
-    for item in serie:
-        if isinstance(item, dict) and "value" in item:
-            item["value"] = limpiar_valor(item.get("value"))
-    
-    return serie
+# -----------------------------------------------------------------------------
+#  📦  Preparar datos según el tipo de gráfico
+# -----------------------------------------------------------------------------
 
-def sanitizar_series(series):
-    """Limpia y normaliza múltiples series"""
-    if not series or not isinstance(series, list):
-        return []
-    
-    series_limpias = []
-    for s in series:
-        if isinstance(s, dict) and "name" in s and "data" in s:
-            serie_limpia = {
-                "name": s["name"],
-                "data": sanitizar_serie(s["data"])
-            }
-            series_limpias.append(serie_limpia)
-    
-    return series_limpias
+tipo = meta.get("tipo", "bar")
+labels = _jsonify(meta.get("labels"), [])
+series = _jsonify(meta.get("series"), [])
+legacy_serie = _jsonify(meta.get("serie"), [])  # compatibilidad vieja
 
-# Procesar series según el tipo
-if tipo == "multi-line" and meta.get("multiserie", False):
-    # Para gráficos multi-línea
-    series_procesadas = sanitizar_series(series_data)
-    df = None  # No se usa DataFrame para multi-line
+# Si no hay labels/series busca reconstruirlos desde legacy
+if tipo == "multi-line" and (not labels or not series):
+    if isinstance(legacy_serie, list) and legacy_serie and isinstance(legacy_serie[0], dict):
+        labels = sorted({p["label"] for s in legacy_serie for p in s.get("data", [])})
+        series = legacy_serie
+
+# Sanitizar valores de cada punto
+for s in series:
+    if isinstance(s, dict) and "data" in s:
+        for p in s["data"]:
+            if isinstance(p, dict) and "value" in p:
+                p["value"] = _clean_value(p["value"])
+
+if tipo != "multi-line":
+    # Serie simple → construir DataFrame para Plotly Express
+    simple_data = _jsonify(legacy_serie, [])
+    for p in simple_data:
+        if isinstance(p, dict) and "value" in p:
+            p["value"] = _clean_value(p["value"])
+    df = pd.DataFrame(simple_data)
 else:
-    # Para gráficos de serie simple
-    serie_procesada = sanitizar_serie(serie_data) if serie_data else []
-    df = pd.DataFrame(serie_procesada) if serie_procesada else pd.DataFrame()
-    series_procesadas = []
+    df = pd.DataFrame()  # no se usa
 
-# === RENDER DINÁMICO MEJORADO ===
-def render_chart(df, meta, labels, series_procesadas):
-    tipo = meta.get("tipo", "bar")
+# -----------------------------------------------------------------------------
+#  📊  Renderizado del gráfico
+# -----------------------------------------------------------------------------
+
+def render_chart():
     titulo = meta.get("titulo", "Gráfico Tronix")
 
     if tipo == "multi-line":
-        # Verificar que tenemos los datos necesarios
-        if not labels or not isinstance(labels, list) or len(labels) == 0:
-            st.error(f"Faltan labels para multi-line. Labels encontrados: {labels}")
-            return None
-            
-        if not series_procesadas or len(series_procesadas) == 0:
-            st.error(f"Faltan series para multi-line. Series encontradas: {series_procesadas}")
+        if not labels or not series:
+            st.error("Faltan labels o series para un gráfico multi‑line.")
             return None
 
         fig = go.Figure()
-        
-        for s in series_procesadas:
-            if not isinstance(s, dict) or "name" not in s or "data" not in s:
-                st.warning(f"Serie inválida saltada: {s}")
+        for s in series:
+            if not isinstance(s, dict):
                 continue
-                
-            # Crear diccionario de puntos para mapeo
-            puntos = {}
-            for p in s.get("data", []):
-                if isinstance(p, dict) and "label" in p:
-                    puntos[p["label"]] = p.get("value", 0)
-            
-            # Crear valores Y mapeados a los labels
-            y_vals = [puntos.get(lbl, 0) for lbl in labels]
-            
-            fig.add_trace(go.Scatter(
-                x=labels,
-                y=y_vals,
-                name=s.get("name", "Serie sin nombre"),
-                mode="lines+markers",
-                line=dict(width=3),
-                marker=dict(size=8)
-            ))
+            nombre = s.get("name", "¿?")
+            puntos = {p["label"]: p.get("value", 0) for p in s.get("data", []) if isinstance(p, dict)}
+            y_vals = [_clean_value(puntos.get(lbl, 0)) for lbl in labels]
+            fig.add_trace(go.Scatter(x=labels, y=y_vals, name=nombre, mode="lines+markers"))
 
     else:
-        # Gráficos de serie simple
-        if df is None or df.empty:
-            st.error("No hay datos para el gráfico")
-            return None
-            
-        if "label" not in df.columns or "value" not in df.columns:
-            st.error("Los datos no contienen columnas 'label' y 'value'.")
+        if df.empty or "label" not in df.columns or "value" not in df.columns:
+            st.error("Datos insuficientes para el gráfico solicitado.")
             return None
 
         if tipo == "pie":
@@ -185,52 +137,32 @@ def render_chart(df, meta, labels, series_procesadas):
         elif tipo == "line":
             fig = px.line(df, x="label", y="value", markers=True, text="value", title=titulo)
         elif tipo == "area":
-            fig = px.area(df, x="label", y="value", title=titulo, markers=True, color="label", text="value")
+            fig = px.area(df, x="label", y="value", markers=True, title=titulo)
         elif tipo == "scatter":
-            fig = px.scatter(df, x="label", y="value", title=titulo, text="value", color="label")
+            fig = px.scatter(df, x="label", y="value", text="value", title=titulo)
         elif tipo == "horizontal_bar":
-            fig = px.bar(df, y="label", x="value", title=titulo, text="value", orientation="h", color="label")
-        else:
-            fig = px.bar(df, x="label", y="value", title=titulo, text="value", color="label")
+            fig = px.bar(df, y="label", x="value", orientation="h", text="value", title=titulo)
+        else:  # bar
+            fig = px.bar(df, x="label", y="value", text="value", title=titulo)
 
-        # Agregar formato de texto solo para gráficos no multi-line
-        fig.update_traces(
-            texttemplate='%{text} m³',
-            marker=dict(line=dict(width=0.5, color='black'))
-        )
+        # Formato texto solo para gráficos simples
+        fig.update_traces(texttemplate="%{text} m³", marker_line_width=0.5, marker_line_color="black")
 
-    # Configuración común del layout
+    # Layout común
     fig.update_layout(
+        title=dict(text=titulo, x=0.5),
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080", "#FF6347", "#9370DB"],
-        yaxis_title="Producción (m³)",
-        xaxis_title="Fecha",
-        title_font_size=24,
-        title_x=0.5,  # Centrar título
-        uniformtext_minsize=8,
-        uniformtext_mode="hide",
-        plot_bgcolor="white",
-        template="plotly_white",
+        xaxis_title="Fecha", yaxis_title="Producción (m³)", height=600,
+        template="plotly_white", plot_bgcolor="white",
         margin=dict(t=80, l=60, r=40, b=60),
-        height=600,
-        showlegend=True if tipo == "multi-line" else True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        )
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
-    
     return fig
 
-# Renderizar el gráfico
-fig = render_chart(df, meta, labels, series_procesadas)
-
+fig = render_chart()
 if fig:
     st.plotly_chart(fig, use_container_width=True)
-else:
-    st.error("No se pudo generar el gráfico. Revisa los datos de entrada.")
+
 
 
 
