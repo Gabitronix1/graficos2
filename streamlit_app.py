@@ -1,4 +1,3 @@
-
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
@@ -8,20 +7,19 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
-# 🛡️ Permitir iframes embebidos
 def allow_iframe():
     headers = _get_websocket_headers()
     headers["X-Frame-Options"] = "ALLOWALL"
     headers["Content-Security-Policy"] = "frame-ancestors *"
 allow_iframe()
 
-# 1️⃣ Leer query param
+# Leer parámetro de URL
 grafico_id = st.query_params.get("grafico_id")
 if not grafico_id:
     st.error("Falta el parámetro grafico_id")
     st.stop()
 
-# 2️⃣ Consultar Supabase
+# Consulta a Supabase
 supabase = get_client()
 resp = (
     supabase.table("graficos")
@@ -36,20 +34,16 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta = resp.data
+tipo = meta.get("tipo", "bar")
 
-# 🚨 Extraer bien todos los campos
+# Caso legacy
 serie_original = meta.get("serie", None)
-labels = meta.get("labels", [])
-series = meta.get("series", [])
-
-# 🔍 Caso legacy: venía como {labels:[], values:[]}
 if isinstance(serie_original, dict) and "labels" in serie_original and "values" in serie_original:
     serie_original = [
         {"label": l, "value": v}
         for l, v in zip(serie_original["labels"], serie_original["values"])
     ]
 
-# 🔐 Blindaje: limpiar value
 def sanitizar_serie(serie):
     if not serie:
         return []
@@ -59,50 +53,45 @@ def sanitizar_serie(serie):
         if isinstance(v, (int, float)):
             return v
         if isinstance(v, str):
-            try:
-                return float(v)
-            except:
-                return 0
+            try: return float(v)
+            except: return 0
         return 0
     for item in serie:
         item["value"] = limpiar_valor(item.get("value"))
     return serie
 
-# Si es multi-line, no necesitamos sanitizar ni df
-if meta.get("tipo") == "multi-line" and series and labels:
-    df = pd.DataFrame()
-else:
-    serie = sanitizar_serie(serie_original) if serie_original else []
-    df    = pd.DataFrame(serie) if serie else pd.DataFrame()
+serie = sanitizar_serie(serie_original) if serie_original else []
+df = pd.DataFrame(serie) if serie else pd.DataFrame()
 
-# ✅ Render dinámico
-def render_chart(df, meta, labels, series):
+# === Render dinámico ===
+def render_chart(df, meta):
     tipo = meta.get("tipo", "bar")
 
-    # -------------- MULTI‑LINE -----------------
     if tipo == "multi-line":
+        labels = meta.get("labels", [])
+        series = meta.get("series", [])
+
         if not labels or not series:
             st.error(f"Faltan datos para multi-line. Keys meta: {list(meta.keys())}")
             st.stop()
 
         fig = go.Figure()
         for s in series:
-            # dict label→value para rellenar huecos
-            mapping = {
+            puntos = {
                 p["label"]: p.get("value", 0)
                 for p in s.get("data", [])
                 if isinstance(p, dict) and "label" in p
             }
-            y_vals = [mapping.get(lbl, 0) for lbl in labels]
+            y_vals = [puntos.get(lbl, 0) for lbl in labels]
             fig.add_trace(go.Scatter(
-                x   = labels,
-                y   = y_vals,
-                name= s.get("name", "¿?"),
-                mode= "lines+markers"
+                x=labels,
+                y=y_vals,
+                name=s.get("name", "¿?"),
+                mode="lines+markers"
             ))
-    # ----------- OTROS GRÁFICOS ---------------
+
     else:
-        if ("label" not in df.columns or "value" not in df.columns):
+        if "label" not in df.columns or "value" not in df.columns:
             st.error("Los datos no traen columnas 'label' y 'value'.")
             st.stop()
 
@@ -110,8 +99,8 @@ def render_chart(df, meta, labels, series):
             fig = px.pie(df, names="label", values="value", title=meta["titulo"])
         elif tipo == "line" and df.shape[1] > 2:
             melt = df.melt(id_vars=["label"], var_name="serie", value_name="value")
-            fig  = px.line(melt, x="label", y="value", color="serie",
-                           markers=True, text="value", title=meta["titulo"])
+            fig = px.line(melt, x="label", y="value", color="serie",
+                          markers=True, text="value", title=meta["titulo"])
         elif tipo == "line":
             fig = px.line(df, x="label", y="value", markers=True, text="value",
                           title=meta["titulo"])
@@ -124,15 +113,13 @@ def render_chart(df, meta, labels, series):
         elif tipo == "horizontal_bar":
             fig = px.bar(df, y="label", x="value", title=meta["titulo"],
                          text="value", orientation="h", color="label")
-        else:  # bar
+        else:
             fig = px.bar(df, x="label", y="value", title=meta["titulo"],
                          text="value", color="label")
 
-        # Formato texto solo para no­multi‑line
         fig.update_traces(texttemplate='%{text} m³',
                           marker=dict(line=dict(width=0.5, color='black')))
 
-    # ----------- LAYOUT GLOBAL ---------------
     fig.update_layout(
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080"],
         yaxis_title="", xaxis_title="", title_font_size=24,
@@ -142,7 +129,8 @@ def render_chart(df, meta, labels, series):
     )
     return fig
 
-st.plotly_chart(render_chart(df, meta, labels, series), use_container_width=True)
+st.plotly_chart(render_chart(df, meta), use_container_width=True)
+
 
 
 
