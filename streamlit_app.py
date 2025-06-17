@@ -1,4 +1,3 @@
-
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
@@ -9,7 +8,7 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 st.set_page_config(layout="wide", page_title="Gráficos Tronix")
 
-# 🛡️ Permitir iframes embebidos
+# 🗭 Permitir iframes embebidos
 def allow_iframe():
     headers = _get_websocket_headers()
     headers["X-Frame-Options"] = "ALLOWALL"
@@ -78,11 +77,11 @@ def render_dynamic_chart(df, meta):
         if not labels or not series:
             st.error("Faltan datos para el gráfico multi-line")
             st.stop()
-
         fig = go.Figure()
         for serie in series:
-            puntos = {p["label"]: p["value"] for p in serie["data"] if "label" in p and "value" in p}
-            y_data = [puntos.get(label, 0) for label in labels]
+            # Crear diccionario de label -> value
+            data_dict = {p.get("label"): p.get("value") for p in serie.get("data", [])}
+            y_data = [data_dict.get(label, 0) for label in labels]
             fig.add_trace(go.Scatter(x=labels, y=y_data, name=serie["name"], mode="lines+markers"))
     else:
         if ("label" not in df.columns or "value" not in df.columns) and df.shape[1] < 2:
@@ -119,9 +118,8 @@ def render_dynamic_chart(df, meta):
     )
     return fig
 
-# Mostrar gráfico
+# Mostrar gráfico (sin texto adicional fijo)
 st.plotly_chart(render_dynamic_chart(df, meta), use_container_width=True)
-
 
 
 
