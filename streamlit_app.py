@@ -36,10 +36,14 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta = resp.data
+
+# 🚨 Extraer bien todos los campos
 serie_original = meta.get("serie", None)
+labels = meta.get("labels", [])
+series = meta.get("series", [])
 
 # 🔍 Caso legacy: venía como {labels:[], values:[]}
-if isinstance(serie_original, dict) and    "labels" in serie_original and "values" in serie_original:
+if isinstance(serie_original, dict) and "labels" in serie_original and "values" in serie_original:
     serie_original = [
         {"label": l, "value": v}
         for l, v in zip(serie_original["labels"], serie_original["values"])
@@ -64,18 +68,19 @@ def sanitizar_serie(serie):
         item["value"] = limpiar_valor(item.get("value"))
     return serie
 
-serie = sanitizar_serie(serie_original) if serie_original else []
-df    = pd.DataFrame(serie) if serie else pd.DataFrame()
+# Si es multi-line, no necesitamos sanitizar ni df
+if meta.get("tipo") == "multi-line" and series and labels:
+    df = pd.DataFrame()
+else:
+    serie = sanitizar_serie(serie_original) if serie_original else []
+    df    = pd.DataFrame(serie) if serie else pd.DataFrame()
 
 # ✅ Render dinámico
-def render_chart(df, meta):
+def render_chart(df, meta, labels, series):
     tipo = meta.get("tipo", "bar")
 
     # -------------- MULTI‑LINE -----------------
     if tipo == "multi-line":
-        labels = meta.get("labels", [])
-        series = meta.get("series") or meta.get("serie") or []   # ← fallback
-
         if not labels or not series:
             st.error(f"Faltan datos para multi-line. Keys meta: {list(meta.keys())}")
             st.stop()
@@ -137,7 +142,8 @@ def render_chart(df, meta):
     )
     return fig
 
-st.plotly_chart(render_chart(df, meta), use_container_width=True)
+st.plotly_chart(render_chart(df, meta, labels, series), use_container_width=True)
+
 
 
 
