@@ -1,3 +1,4 @@
+
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
@@ -36,7 +37,7 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta = resp.data
-serie_original = meta.get("serie", [])
+serie_original = meta.get("serie", None)
 
 # 🔍 Detectar si viene con labels[] y values[] separados (malo)
 if isinstance(serie_original, dict) and "labels" in serie_original and "values" in serie_original:
@@ -46,6 +47,8 @@ if isinstance(serie_original, dict) and "labels" in serie_original and "values" 
 
 # 🔐 Blindaje: limpiar la serie para que value sea siempre numérico
 def sanitizar_serie(serie):
+    if not serie:
+        return []
     def limpiar_valor(v):
         if isinstance(v, dict):
             return list(v.values())[0] if len(v) == 1 else 0
@@ -62,13 +65,13 @@ def sanitizar_serie(serie):
         item["value"] = limpiar_valor(item.get("value"))
     return serie
 
-serie = sanitizar_serie(serie_original)
-df = pd.DataFrame(serie)
+serie = sanitizar_serie(serie_original) if serie_original else []
+df = pd.DataFrame(serie) if serie else pd.DataFrame()
 
 # ✅ Renderizar múltiples tipos de gráfico
 def render_dynamic_chart(df, meta):
     chart_type = meta.get("tipo", "bar")
-    if "label" not in df.columns or "value" not in df.columns:
+    if chart_type not in ["multi-line"] and ("label" not in df.columns or "value" not in df.columns):
         st.error("Los datos no tienen las columnas requeridas: 'label' y 'value'")
         st.stop()
 
@@ -80,6 +83,9 @@ def render_dynamic_chart(df, meta):
     elif chart_type == "multi-line":
         labels = meta.get("labels", [])
         values = meta.get("series", [])
+        if not labels or not values:
+            st.error("Faltan datos para el gráfico multi-line")
+            st.stop()
         fig = go.Figure(data=[
             go.Scatter(
                 x=labels,
@@ -116,6 +122,7 @@ def render_dynamic_chart(df, meta):
 
 # Mostrar gráfico (sin texto adicional fijo)
 st.plotly_chart(render_dynamic_chart(df, meta), use_container_width=True)
+
 
 
 
