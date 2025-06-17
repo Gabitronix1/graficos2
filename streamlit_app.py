@@ -78,16 +78,11 @@ def render_dynamic_chart(df, meta):
         if not labels or not series:
             st.error("Faltan datos para el gráfico multi-line")
             st.stop()
+
         fig = go.Figure()
         for serie in series:
-            y_data = []
-            for idx, label in enumerate(labels):
-                try:
-                    punto = serie["data"][idx]
-                    value = punto["value"] if isinstance(punto, dict) and "value" in punto else punto
-                except IndexError:
-                    value = 0
-                y_data.append(value)
+            puntos = {p["label"]: p["value"] for p in serie["data"] if "label" in p and "value" in p}
+            y_data = [puntos.get(label, 0) for label in labels]
             fig.add_trace(go.Scatter(x=labels, y=y_data, name=serie["name"], mode="lines+markers"))
     else:
         if ("label" not in df.columns or "value" not in df.columns) and df.shape[1] < 2:
@@ -124,7 +119,7 @@ def render_dynamic_chart(df, meta):
     )
     return fig
 
-# Mostrar gráfico (sin texto adicional fijo)
+# Mostrar gráfico
 st.plotly_chart(render_dynamic_chart(df, meta), use_container_width=True)
 
 
