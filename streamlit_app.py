@@ -82,7 +82,7 @@ def render_dynamic_chart(df, meta):
         fig = px.line(df_melted, x="label", y="value", color="serie", markers=True, text="value", title=meta["titulo"])
     elif chart_type == "multi-line":
         labels = meta.get("labels", [])
-        values = meta.get("series") or meta.get("serie")  # 👈 fallback
+        values = meta.get("series", [])
         if not labels or not values:
             st.error("Faltan datos para el gráfico multi-line")
             st.stop()
