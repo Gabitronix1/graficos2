@@ -86,7 +86,19 @@ legacy_serie = _jsonify(meta.get("serie"), [])  # compatibilidad vieja
 # Si no hay labels/series busca reconstruirlos desde legacy
 if tipo == "multi-line" and (not labels or not series):
     if isinstance(legacy_serie, list) and legacy_serie and isinstance(legacy_serie[0], dict):
-        labels = sorted({p["label"] for s in legacy_serie for p in s.get("data", [])})
+        labels = sorted({
+            p["label"]
+            for s in legacy_serie or []
+            if isinstance(s, dict) and "data" in s and isinstance(s["data"], list)
+            for p in s["data"]
+            if isinstance(p, dict) and "label" in p
+        })
+        # Intentar ordenar por fecha si es posible
+        try:
+            labels = sorted(labels, key=lambda x: pd.to_datetime(x))
+            except Exception:
+                pass
+                
         series = legacy_serie
 
 # Sanitizar valores de cada punto
