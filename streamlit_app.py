@@ -96,7 +96,7 @@ if tipo == "multi-line" and (not labels or not series):
         # Intentar ordenar por fecha si es posible
         try:
             labels = sorted(labels, key=lambda x: pd.to_datetime(x))
-            except Exception:
+        except Exception:
                 pass
                 
         series = legacy_serie
