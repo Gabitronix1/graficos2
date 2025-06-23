@@ -137,8 +137,15 @@ def render_chart():
             nombre = s.get("name", "¿?")
             line_style = s.get("line", {})  # Espera {"dash": "dot"}, etc.
             
-            puntos = {p["label"]: p.get("value") for p in s.get("data", []) if isinstance(p, dict)}
-            y_vals = [puntos[lbl] if lbl in puntos else None for lbl in labels]
+        datos_raw = s.get("data", [])
+        if all(isinstance(v, (int, float)) or v is None for v in datos_raw):
+            # data es una lista plana → mapear usando labels
+            puntos = {lbl: val for lbl, val in zip(labels, datos_raw)}
+        else:
+            # data ya viene con label → usar normal
+            puntos = {p["label"]: p.get("value") for p in datos_raw if isinstance(p, dict)}
+        y_vals = [puntos.get(lbl, None) for lbl in labels]
+
             
             fig.add_trace(go.Scatter(
                 x=labels,
