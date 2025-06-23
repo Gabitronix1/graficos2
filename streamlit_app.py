@@ -135,7 +135,7 @@ def render_chart():
             if not isinstance(s, dict):
                 continue
             nombre = s.get("name", "¿?")
-            dash_style = s.get("dashStyle", "solid")  # puede ser "dot", "dash", etc.
+            line_style = s.get("line", {})  # Espera {"dash": "dot"}, etc.
             
             puntos = {p["label"]: p.get("value") for p in s.get("data", []) if isinstance(p, dict)}
             y_vals = [puntos.get(lbl, None) for lbl in labels]
@@ -145,7 +145,7 @@ def render_chart():
                 y=y_vals,
                 name=nombre,
                 mode="lines+markers",
-                line=dict(dash="dot" if dash_style == "dot" else "solid")
+                line=line_style if isinstance(line_style, dict) else {}
             ))
 
     else:
