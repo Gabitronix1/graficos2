@@ -138,13 +138,14 @@ def render_chart():
             line_style = s.get("line", {})  # Espera {"dash": "dot"}, etc.
             
             puntos = {p["label"]: p.get("value") for p in s.get("data", []) if isinstance(p, dict)}
-            y_vals = [puntos.get(lbl, None) for lbl in labels]
+            y_vals = [puntos[lbl] if lbl in puntos else None for lbl in labels]
             
             fig.add_trace(go.Scatter(
                 x=labels,
                 y=y_vals,
                 name=nombre,
                 mode="lines+markers",
+                connectgaps=False,
                 line=line_style if isinstance(line_style, dict) else {}
             ))
 
