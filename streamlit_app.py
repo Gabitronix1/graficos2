@@ -136,7 +136,7 @@ def render_chart():
                 continue
             nombre = s.get("name", "¿?")
             puntos = {p["label"]: p.get("value", 0) for p in s.get("data", []) if isinstance(p, dict)}
-            y_vals = [_clean_value(puntos.get(lbl, 0)) for lbl in labels]
+            y_vals = [puntos.get(lbl, None) for lbl in labels]
             fig.add_trace(go.Scatter(x=labels, y=y_vals, name=nombre, mode="lines+markers"))
 
     else:
