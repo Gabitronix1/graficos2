@@ -149,7 +149,7 @@ def render_chart():
                 y=y_vals,
                 name=nombre,
                 mode="lines+markers",
-                connectgaps=False,
+                connectgaps=True if nombre.lower().startswith("proyección") else False
                 line=line_style if isinstance(line_style, dict) else {}
             ))
 
