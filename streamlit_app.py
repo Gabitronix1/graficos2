@@ -60,7 +60,6 @@ def _jsonify(field, default):
             return default
     return default
 
-
 def _clean_value(v):
     if isinstance(v, (int, float)):
         return v
@@ -72,7 +71,6 @@ def _clean_value(v):
     if isinstance(v, dict):
         return list(v.values())[0] if len(v) == 1 else 0
     return 0
-
 
 # -----------------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
@@ -97,8 +95,7 @@ if tipo == "multi-line" and (not labels or not series):
         try:
             labels = sorted(labels, key=lambda x: pd.to_datetime(x))
         except Exception:
-                pass
-                
+            pass
         series = legacy_serie
 
 # Sanitizar valores de cada punto
@@ -136,17 +133,17 @@ def render_chart():
                 continue
             nombre = s.get("name", "¿?")
             line_style = s.get("line", {})  # Espera {"dash": "dot"}, etc.
-            
-        datos_raw = s.get("data", [])
-        if all(isinstance(v, (int, float)) or v is None for v in datos_raw):
-            # data es una lista plana → mapear usando labels
-            puntos = {lbl: val for lbl, val in zip(labels, datos_raw)}
-        else:
-            # data ya viene con label → usar normal
-            puntos = {p["label"]: p.get("value") for p in datos_raw if isinstance(p, dict)}
-        y_vals = [puntos.get(lbl, None) for lbl in labels]
 
-            
+            datos_raw = s.get("data", [])
+            if all(isinstance(v, (int, float)) or v is None for v in datos_raw):
+                # data es una lista plana → mapear usando labels
+                puntos = {lbl: val for lbl, val in zip(labels, datos_raw)}
+            else:
+                # data ya viene con label → usar normal
+                puntos = {p["label"]: p.get("value") for p in datos_raw if isinstance(p, dict)}
+
+            y_vals = [puntos.get(lbl, None) for lbl in labels]
+
             fig.add_trace(go.Scatter(
                 x=labels,
                 y=y_vals,
@@ -174,10 +171,8 @@ def render_chart():
         else:  # bar
             fig = px.bar(df, x="label", y="value", text="value", title=titulo)
 
-        # Formato texto solo para gráficos simples
         fig.update_traces(texttemplate="%{text} m³", marker_line_width=0.5, marker_line_color="black")
 
-    # Layout común
     fig.update_layout(
         title=dict(text=titulo, x=0.5),
         colorway=["#228B22", "#8B4513", "#1E90FF", "#800080", "#FF6347", "#9370DB"],
@@ -191,7 +186,6 @@ def render_chart():
 fig = render_chart()
 if fig:
     st.plotly_chart(fig, use_container_width=True)
-
 
 
 
