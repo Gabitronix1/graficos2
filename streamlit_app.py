@@ -1,16 +1,7 @@
-import json
-import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
-from supabase_client import get_client
-from streamlit.web.server.websocket_headers import _get_websocket_headers
-
 # streamlit_app.py
 # ---------------------------------------------------------------------
 #  🚀  Servicio de gráficos Tronix — Streamlit ≥ 1.35
 # ---------------------------------------------------------------------
-
 import json
 from typing import Any, Dict, List, Union
 
@@ -18,16 +9,22 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from supabase import create_client, Client
+from supabase_client import get_client as _raw_client
+
+# (Opcional) Carga .env en local — ignóralo en prod si no lo necesitas
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------
 #  🔌  Conexión Supabase
 # ---------------------------------------------------------------------
 @st.cache_resource(show_spinner=False)
-def get_client() -> Client:
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_SERVICE_KEY"]
-    return create_client(url, key)
+def get_client():
+    """Wrapper cacheado: usa las env-vars vía tu helper."""
+    return _raw_client()
 
 
 # ---------------------------------------------------------------------
@@ -108,7 +105,7 @@ if not grafico_id:
     st.error("Falta el parámetro ‘grafico_id’ en la URL")
     st.stop()
 
-supabase: Client = get_client()
+supabase = get_client()
 resp = (
     supabase.table("graficos")
     .select("*")
@@ -170,7 +167,7 @@ if tipo != "multi-line":
             p["value"] = _clean_value(p["value"])
     df = pd.DataFrame(simple_data)
 else:
-    df = pd.DataFrame()  # placeholder
+    df = pd.DataFrame()  # placeholder vacío
 
 # ---------------------------------------------------------------------
 #  📊  Renderizado
@@ -278,8 +275,6 @@ def render_chart():
 fig = render_chart()
 if fig:
     st.plotly_chart(fig, use_container_width=True)
-
-
 
 
 
