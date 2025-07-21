@@ -285,7 +285,6 @@ def render_chart():
         plot_bgcolor="white",
         paper_bgcolor=PAPER_COLOR,
         plot_bgcolor=PLOT_COLOR,
-        margin=dict(t=100, l=20, r=20, b=40),
     )
 
     fig.add_layout_image(
