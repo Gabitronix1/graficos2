@@ -269,7 +269,7 @@ def render_chart():
         # ---------- tamaño & márgenes ----------
         autosize=True,
         height=None if alto == 0 else alto,
-        margin=dict(t=80, l=20, r=140, b=40),  # más espacio a la derecha para logo
+        margin=dict(t=100, l=20, r=20, b=40),  # más espacio a la derecha para logo
 
         # ---------- leyenda ----------
         legend=dict(
@@ -286,12 +286,21 @@ def render_chart():
         dict(
             source=LOGO_URL,
             xref="paper", yref="paper",
-            x=1.12, y=1.05,      # ajusta según necesites
+            x=1.02, y=1.18,      # ajusta según necesites
             sizex=0.18, sizey=0.18,
             xanchor="right", yanchor="top",
             layer="above", opacity=0.9,
         )
     )
+    fig.add_shape(
+        type="rect",
+        xref="paper", yref="paper",
+        x0=0, y0=0, x1=1, y1=1,
+        fillcolor="#F9F7F2",  # beige muy suave
+        layer="below",
+        line_width=0,
+    )
+
 
     return fig
 
