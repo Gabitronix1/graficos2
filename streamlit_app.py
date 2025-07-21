@@ -16,6 +16,9 @@ from supabase_client import get_client as _raw_client
 # -----------------------------------------------------------------
 ARAUCO_PALETTE = ["#696158", "#BFB800", "#EA7600", "#DFD1A7", "#2AA5A0"]
 LOGO_URL = "https://images.seeklogo.com/logo-png/19/1/arauco-logo-png_seeklogo-191105.png"
+PAPER_COLOR  = "#F9F7F2"   # beige suave
+PLOT_COLOR   = "#FFFFFF"   # blanco en área de datos
+BORDER_COLOR = "#696158"   # gris-verde Arauco logo    
 
 # (Opcional) Carga .env en local — ignóralo en prod si no lo necesitas
 try:
@@ -280,6 +283,9 @@ def render_chart():
 
         template="plotly_white",
         plot_bgcolor="white",
+        paper_bgcolor=PAPER_COLOR,
+        plot_bgcolor=PLOT_COLOR,
+        margin=dict(t=100, l=20, r=20, b=40),
     )
 
     fig.add_layout_image(
@@ -296,9 +302,9 @@ def render_chart():
         type="rect",
         xref="paper", yref="paper",
         x0=0, y0=0, x1=1, y1=1,
-        fillcolor="#F9F7F2",  # beige muy suave
-        layer="below",
-        line_width=0,
+        line=dict(width=2, color=BORDER_COLOR),
+        fillcolor="rgba(0,0,0,0)",
+        layer="above",
     )
 
 
