@@ -216,6 +216,7 @@ def render_chart():
                 }
 
             y_vals = [puntos.get(lbl, None) for lbl in labels]
+            y_vals = [v if (v is None or v != 0) else None for v in y_vals]
 
             fig.add_trace(
                 go.Scatter(
