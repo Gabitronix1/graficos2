@@ -11,6 +11,12 @@ import plotly.graph_objects as go
 import streamlit as st
 from supabase_client import get_client as _raw_client
 
+# -----------------------------------------------------------------
+#  🎨  Paleta corporativa Arauco
+# -----------------------------------------------------------------
+ARAUCO_PALETTE = ["#696158", "#BFB800", "#EA7600", "#DFD1A7", "#2AA5A0"]
+
+
 # (Opcional) Carga .env en local — ignóralo en prod si no lo necesitas
 try:
     from dotenv import load_dotenv
@@ -66,7 +72,9 @@ def _clean_value(v: Any) -> float:
 # ---------------------------------------------------------------------
 def _get_palette(meta: Dict[str, Any]) -> List[str]:
     pal = _jsonify(meta.get("palette"), [])
-    return pal if isinstance(pal, list) and pal else px.colors.qualitative.G10
+    if isinstance(pal, list) and pal:
+        return pal
+    return ARAUCO_PALETTE
 
 
 def _get_unit(meta: Dict[str, Any]) -> str:
@@ -176,7 +184,7 @@ def render_chart():
     titulo: str = meta.get("titulo", "Gráfico Tronix")
     unit: str = _get_unit(meta)
     palette: List[str] = _get_palette(meta)
-    alto: int = int(meta.get("alto", 400))
+    alto: int = int(meta.get("alto", 0))  # 0 = autosize en Plotly
     x_lab, y_lab = _axis_labels(meta, unit)
 
     # ---------------- multi-line ----------------
@@ -252,10 +260,11 @@ def render_chart():
         colorway=palette,
         xaxis_title=x_lab,
         yaxis_title=y_lab,
-        height=alto,
+        height=None if alto == 0 else alto,
+        autosize=True,
         template="plotly_white",
         plot_bgcolor="white",
-        margin=dict(t=60, l=60, r=40, b=60),
+        margin=dict(t=20, l=20, r=20, b=40),
         legend=dict(
             orientation="h",
             yanchor="bottom",
