@@ -282,7 +282,6 @@ def render_chart():
         ),
 
         template="plotly_white",
-        plot_bgcolor="white",
         paper_bgcolor=PAPER_COLOR,
         plot_bgcolor=PLOT_COLOR,
     )
