@@ -15,7 +15,7 @@ from supabase_client import get_client as _raw_client
 #  🎨  Paleta corporativa Arauco
 # -----------------------------------------------------------------
 ARAUCO_PALETTE = ["#696158", "#BFB800", "#EA7600", "#DFD1A7", "#2AA5A0"]
-
+LOGO_URL = "https://images.seeklogo.com/logo-png/19/1/arauco-logo-png_seeklogo-191105.png"
 
 # (Opcional) Carga .env en local — ignóralo en prod si no lo necesitas
 try:
@@ -71,10 +71,11 @@ def _clean_value(v: Any) -> float:
 #  🎨  Estilo dinámico
 # ---------------------------------------------------------------------
 def _get_palette(meta: Dict[str, Any]) -> List[str]:
+    """Devuelve la paleta a usar (meta > corporativa)."""
     pal = _jsonify(meta.get("palette"), [])
     if isinstance(pal, list) and pal:
-        return pal
-    return ARAUCO_PALETTE
+        return pal          # override desde la BD
+    return ARAUCO_PALETTE   # default corporativo
 
 
 def _get_unit(meta: Dict[str, Any]) -> str:
@@ -255,26 +256,43 @@ def render_chart():
         )
 
     # ---------------- layout común ----------------
-    fig.update_layout(
-        title=dict(text=titulo, x=0.5),
-        colorway=palette,
-        xaxis_title=x_lab,
-        yaxis_title=y_lab,
-        height=None if alto == 0 else alto,
-        autosize=True,
-        template="plotly_white",
-        plot_bgcolor="white",
-        margin=dict(t=20, l=20, r=20, b=40),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            title=None,
-        ),
-        font=dict(family="Inter, sans-serif", size=13),
-    )
+   fig.update_layout(
+    # ---------- títulos & tipografía ----------
+    title=dict(text=titulo, x=0.0, xanchor="left"),  # evita que choque con la leyenda
+    font=dict(family="Inter, sans-serif", size=13),
+
+    # ---------- colores & ejes ----------
+    colorway=palette,
+    xaxis_title=x_lab,
+    yaxis_title=y_lab,
+
+    # ---------- tamaño & márgenes ----------
+    autosize=True,
+    height=None if alto == 0 else alto,
+    margin=dict(t=80, l=20, r=140, b=40),  # más espacio a la derecha para logo
+
+    # ---------- leyenda ----------
+    legend=dict(
+        orientation="v",
+        yanchor="top", y=1,
+        xanchor="right", x=1.15  # fuera de la zona del gráfico
+    ),
+
+    template="plotly_white",
+    plot_bgcolor="white",
+)
+
+    fig.add_layout_image(
+        dict(
+            source=LOGO_URL,
+            xref="paper", yref="paper",
+            x=1.28, y=1.10,        # ligeramente fuera del canvas para no tapar nada
+            sizex=0.25, sizey=0.25,
+            xanchor="right", yanchor="top",
+            layer="above", opacity=0.9,
+        )
+)
+
     return fig
 
 
