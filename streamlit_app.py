@@ -255,46 +255,45 @@ def render_chart():
             marker_line_color="black",
         )
 
-    # ---------------- layout común ----------------
-   fig.update_layout(
-    # ---------- títulos & tipografía ----------
-    title=dict(text=titulo, x=0.0, xanchor="left"),  # evita que choque con la leyenda
-    font=dict(family="Inter, sans-serif", size=13),
+  # ---------------- layout común ----------------
+    fig.update_layout(
+        # ---------- títulos & tipografía ----------
+        title=dict(text=titulo, x=0.0, xanchor="left"),  # evita que choque con la leyenda
+        font=dict(family="Inter, sans-serif", size=13),
 
-    # ---------- colores & ejes ----------
-    colorway=palette,
-    xaxis_title=x_lab,
-    yaxis_title=y_lab,
+        # ---------- colores & ejes ----------
+        colorway=palette,
+        xaxis_title=x_lab,
+        yaxis_title=y_lab,
 
-    # ---------- tamaño & márgenes ----------
-    autosize=True,
-    height=None if alto == 0 else alto,
-    margin=dict(t=80, l=20, r=140, b=40),  # más espacio a la derecha para logo
+        # ---------- tamaño & márgenes ----------
+        autosize=True,
+        height=None if alto == 0 else alto,
+        margin=dict(t=80, l=20, r=140, b=40),  # más espacio a la derecha para logo
 
-    # ---------- leyenda ----------
-    legend=dict(
-        orientation="v",
-        yanchor="top", y=1,
-        xanchor="right", x=1.15  # fuera de la zona del gráfico
-    ),
+        # ---------- leyenda ----------
+        legend=dict(
+            orientation="v",
+            yanchor="top", y=1,
+            xanchor="right", x=1.15  # fuera de la zona del gráfico
+        ),
 
-    template="plotly_white",
-    plot_bgcolor="white",
-)
+        template="plotly_white",
+        plot_bgcolor="white",
+    )
 
     fig.add_layout_image(
         dict(
             source=LOGO_URL,
             xref="paper", yref="paper",
-            x=1.28, y=1.10,        # ligeramente fuera del canvas para no tapar nada
-            sizex=0.25, sizey=0.25,
+            x=1.12, y=1.05,      # ajusta según necesites
+            sizex=0.18, sizey=0.18,
             xanchor="right", yanchor="top",
             layer="above", opacity=0.9,
         )
-)
+    )
 
     return fig
-
 
 # ---------------------------------------------------------------------
 #  📈  Mostrar gráfico
