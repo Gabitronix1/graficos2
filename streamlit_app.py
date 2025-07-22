@@ -133,51 +133,66 @@ if not resp or not getattr(resp, "data", None):
 meta: Dict[str, Any] = resp.data  # incluye tipo, labels, series, etc.
 
 # ---------------------------------------------------------------------
-#  📦  Preparar datos según el tipo de gráfico
+#  📦  Preparar datos (nuevo: consulta SQL dinámica si existe)
 # ---------------------------------------------------------------------
 tipo: str = meta.get("tipo", "bar")
+query = meta.get("sql", "").strip()
+df = pd.DataFrame()
 
-labels = _jsonify(meta.get("labels"), [])
-series = _jsonify(meta.get("series"), [])
-legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
+if query:
+    # 🔄 Usar SQL dinámico para obtener los datos actualizados
+    try:
+        result = supabase.rpc("ejecutar_sql_dinamico", {"sql": query}).execute()
+        if hasattr(result, "data") and result.data:
+            df = pd.DataFrame(result.data)
+        else:
+            st.warning("La consulta no devolvió datos.")
+    except Exception as e:
+        st.warning(f"No se pudo ejecutar la consulta SQL: {e}")
 
-# Reconstruir labels/series si vienen en formato legacy
-if tipo == "multi-line" and (not labels or not series):
-    if (
-        isinstance(legacy_serie, list)
-        and legacy_serie
-        and isinstance(legacy_serie[0], dict)
-    ):
-        labels = sorted(
-            {
-                p["label"]
-                for s in legacy_serie
-                if isinstance(s, dict)
-                for p in s.get("data", [])
-                if isinstance(p, dict) and "label" in p
-            }
-        )
-        # Ordenar por fecha si se puede
-        try:
-            labels = sorted(labels, key=pd.to_datetime)
-        except Exception:
-            pass
-        series = legacy_serie
+# 🔙 Si no hay SQL, usar los datos preprocesados como siempre (retrocompatibilidad)
+if df.empty:
+    labels = _jsonify(meta.get("labels"), [])
+    series = _jsonify(meta.get("series"), [])
+    legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
 
-# Sanitizar valores
-for s in series:
-    if isinstance(s, dict):
-        for p in s.get("data", []):
+    # Reconstrucción desde formato antiguo si aplica
+    if tipo == "multi-line" and (not labels or not series):
+        if (
+            isinstance(legacy_serie, list)
+            and legacy_serie
+            and isinstance(legacy_serie[0], dict)
+        ):
+            labels = sorted(
+                {
+                    p["label"]
+                    for s in legacy_serie
+                    if isinstance(s, dict)
+                    for p in s.get("data", [])
+                    if isinstance(p, dict) and "label" in p
+                }
+            )
+            # Ordenar por fecha si se puede
+            try:
+                labels = sorted(labels, key=pd.to_datetime)
+            except Exception:
+                pass
+            series = legacy_serie
+
+    # Sanitizar valores
+    for s in series:
+        if isinstance(s, dict):
+            for p in s.get("data", []):
+                if isinstance(p, dict) and "value" in p:
+                    p["value"] = _clean_value(p["value"])
+
+    if tipo != "multi-line":
+        simple_data = _jsonify(legacy_serie, [])
+        for p in simple_data:
             if isinstance(p, dict) and "value" in p:
                 p["value"] = _clean_value(p["value"])
+        df = pd.DataFrame(simple_data)
 
-if tipo != "multi-line":
-    # Serie simple → df para Plotly Express
-    simple_data = _jsonify(legacy_serie, [])
-    for p in simple_data:
-        if isinstance(p, dict) and "value" in p:
-            p["value"] = _clean_value(p["value"])
-    df = pd.DataFrame(simple_data)
 else:
     df = pd.DataFrame()  # placeholder vacío
 
