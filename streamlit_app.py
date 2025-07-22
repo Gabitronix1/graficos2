@@ -131,12 +131,19 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta: Dict[str, Any] = resp.data  # incluye tipo, labels, series, etc.
+# ⚠️ Detectar si viene anidado como string (formato viejo con input)
+if isinstance(meta.get("input"), str):
+    try:
+        meta = json.loads(meta["input"])
+    except Exception as e:
+        st.error(f"No se pudo parsear el input del gráfico: {e}")
+        st.stop()
 
 # ---------------------------------------------------------------------
 #  📦  Preparar datos (nuevo: consulta SQL dinámica si existe)
 # ---------------------------------------------------------------------
 tipo: str = meta.get("tipo", "bar")
-query = meta.get("sql", "").strip()
+query = (meta.get("sql") or "").strip()
 df = pd.DataFrame()
 
 if query:
