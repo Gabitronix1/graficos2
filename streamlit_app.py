@@ -131,53 +131,12 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta: Dict[str, Any] = resp.data  # incluye tipo, labels, series, etc.
-tipo: str = meta.get("tipo", "bar")
-
-# ---------------------------------------------------------------------
-#  🔁  Botón para actualizar datos del gráfico
-# ---------------------------------------------------------------------
-if st.button("🔄 Actualizar gráfico"):
-    sql_original = meta.get("sql")
-    if not sql_original:
-        st.warning("Este gráfico no tiene una consulta SQL asociada para actualizar.")
-        st.stop()
-
-    try:
-        datos_resp = supabase.rpc("run_query", {"sql": sql_original}).execute()
-        nuevos_datos = datos_resp.data
-    except Exception as e:
-        st.error(f"Error al ejecutar la SQL: {e}")
-        st.stop()
-
-    if tipo == "multi-line":
-        series_dict = {}
-        labels_set = set()
-        for row in nuevos_datos:
-            name = row.get("serie", "Serie 1")
-            label = row.get("label")
-            value = _clean_value(row.get("value"))
-            labels_set.add(label)
-            if name not in series_dict:
-                series_dict[name] = []
-            series_dict[name].append({"label": label, "value": value})
-
-        series = [{"name": k, "data": v} for k, v in series_dict.items()]
-        labels = sorted(labels_set)
-    else:
-        for row in nuevos_datos:
-            row["value"] = _clean_value(row.get("value"))
-        df = pd.DataFrame(nuevos_datos)
-    
-else:
-    # Si no se actualiza, usamos los datos guardados
-    labels = _jsonify(meta.get("labels"), [])
-    series = _jsonify(meta.get("series"), [])
-
-
 
 # ---------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
 # ---------------------------------------------------------------------
+tipo: str = meta.get("tipo", "bar")
+
 labels = _jsonify(meta.get("labels"), [])
 series = _jsonify(meta.get("series"), [])
 legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
@@ -356,6 +315,8 @@ def render_chart():
 fig = render_chart()
 if fig:
     st.plotly_chart(fig, use_container_width=True)
+
+
 
 
 
