@@ -131,6 +131,7 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta: Dict[str, Any] = resp.data  # incluye tipo, labels, series, etc.
+tipo: str = meta.get("tipo", "bar")
 
 # ---------------------------------------------------------------------
 #  🔁  Botón para actualizar datos del gráfico
@@ -186,8 +187,6 @@ if st.button("🔄 Actualizar gráfico"):
 # ---------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
 # ---------------------------------------------------------------------
-tipo: str = meta.get("tipo", "bar")
-
 labels = _jsonify(meta.get("labels"), [])
 series = _jsonify(meta.get("series"), [])
 legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
