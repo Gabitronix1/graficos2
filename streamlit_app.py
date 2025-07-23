@@ -143,10 +143,7 @@ if st.button("🔄 Actualizar gráfico"):
         st.stop()
 
     try:
-        datos_resp = (
-            supabase.rpc("run_query", {"sql": sql_original})  # usa tu RPC
-            .execute()
-        )
+        datos_resp = supabase.rpc("run_query", {"sql": sql_original}).execute()
         nuevos_datos = datos_resp.data
     except Exception as e:
         st.error(f"Error al ejecutar la SQL: {e}")
@@ -164,25 +161,19 @@ if st.button("🔄 Actualizar gráfico"):
                 series_dict[name] = []
             series_dict[name].append({"label": label, "value": value})
 
-        nueva_series = [{"name": k, "data": v} for k, v in series_dict.items()]
-        nuevos_labels = sorted(labels_set)
-
-        update_data = {
-            "labels": json.dumps(nuevos_labels),
-            "series": json.dumps(nueva_series),
-        }
-
+        series = [{"name": k, "data": v} for k, v in series_dict.items()]
+        labels = sorted(labels_set)
     else:
         for row in nuevos_datos:
             row["value"] = _clean_value(row.get("value"))
+        df = pd.DataFrame(nuevos_datos)
+    
+else:
+    # Si no se actualiza, usamos los datos guardados
+    labels = _jsonify(meta.get("labels"), [])
+    series = _jsonify(meta.get("series"), [])
 
-        update_data = {
-            "serie": json.dumps(nuevos_datos),
-        }
 
-    supabase.table("graficos").update(update_data).eq("id", grafico_id).execute()
-    st.success("✅ Gráfico actualizado. Recargando...")
-    st.rerun()
 
 # ---------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
