@@ -177,11 +177,19 @@ if actualizar:
 # ---------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
 # ---------------------------------------------------------------------
-tipo: str = meta.get("tipo", "bar")
+if not actualizar:
+    tipo: str = meta.get("tipo", "bar")
+    labels = _jsonify(meta.get("labels"), [])
+    series = _jsonify(meta.get("series"), [])
+    legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
+else:
+    # Ya se definieron tipo, labels y series arriba; recuperamos el legacy_serie si hace falta
+    legacy_serie = meta.get("serie", []) or []
+    st.toast(f"🔁 Datos actualizados ({len(labels)} etiquetas, {len(series)} series)", icon="📈")
+    # 🐛 Debugging temporal para consola (puedes borrar luego)
+    print("🧪 SQL ejecutada:\n", sql)
+    print("🧪 Primeros datos recibidos:\n", rows[:3])
 
-labels = _jsonify(meta.get("labels"), [])
-series = _jsonify(meta.get("series"), [])
-legacy_serie = _jsonify(meta.get("serie"), [])  # compat. anterior
 
 # Reconstruir labels/series si vienen en formato legacy
 if tipo == "multi-line" and (not labels or not series):
