@@ -116,6 +116,7 @@ grafico_id: str | None = st.query_params.get("grafico_id")
 if not grafico_id:
     st.error("Falta el parámetro ‘grafico_id’ en la URL")
     st.stop()
+actualizar = st.query_params.get("actualizar", "false").lower() == "true"
 
 supabase = get_client()
 resp = (
@@ -131,6 +132,47 @@ if not resp or not getattr(resp, "data", None):
     st.stop()
 
 meta: Dict[str, Any] = resp.data  # incluye tipo, labels, series, etc.
+# Ejecutar SQL en vivo si se pidió actualizar
+if actualizar:
+    sql = meta.get("sql")
+    tipo = meta.get("tipo", "bar")
+    titulo = meta.get("titulo", "Gráfico actualizado")
+
+    if not sql:
+        st.error("Este gráfico no tiene SQL guardada para actualizar.")
+        st.stop()
+
+    try:
+        resultado = supabase.rpc("run_query", {"sql": sql}).execute()
+        rows = resultado.data
+    except Exception as e:
+        st.error(f"No se pudo ejecutar la consulta SQL: {e}")
+        st.stop()
+
+    # Convertir a labels/series
+    if tipo == "multi-line":
+        # Esperado: lista con dicts con {serie, label, value}
+        series_dict = {}
+        labels_set = set()
+        for row in rows:
+            name = row.get("serie", "Serie 1")
+            label = row.get("label")
+            value = _clean_value(row.get("value"))
+            labels_set.add(label)
+            if name not in series_dict:
+                series_dict[name] = []
+            series_dict[name].append({"label": label, "value": value})
+
+        labels = sorted(labels_set)
+        series = [{"name": k, "data": v} for k, v in series_dict.items()]
+        meta["labels"] = labels
+        meta["series"] = series
+
+    else:
+        # Esperado: lista con {label, value}
+        for row in rows:
+            row["value"] = _clean_value(row.get("value"))
+        meta["serie"] = rows  # formato legacy, para compatibilidad
 
 # ---------------------------------------------------------------------
 #  📦  Preparar datos según el tipo de gráfico
